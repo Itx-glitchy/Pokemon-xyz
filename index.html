@@ -3,358 +3,673 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pocket World 3D</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#101e25">
+<title>POCKET WORLD 3D</title>
+
 <style>
-body{margin:0;overflow:hidden;font-family:Arial;background:#87ceeb}
-#hud{position:fixed;top:12px;left:12px;color:white;
-background:#10251dcc;padding:14px;border-radius:12px;z-index:2}
-#help{position:fixed;bottom:12px;left:12px;color:white;
-background:#10251dcc;padding:12px;border-radius:12px;z-index:2}
-#battle{display:none;position:fixed;inset:0;background:#0009;
-z-index:5;align-items:center;justify-content:center}
-.card{background:#172b31;color:white;padding:24px;border-radius:18px;
-width:min(340px,85vw);text-align:center}
-button{padding:12px;margin:5px;border:0;border-radius:10px;
-font-weight:bold;cursor:pointer}
-#controls{position:fixed;bottom:15px;right:12px;z-index:3;
-display:grid;grid-template-columns:48px 48px 48px;gap:5px}
-#controls button{background:#172b31cc;color:white;font-size:18px;
-touch-action:none;margin:0}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+body{font-family:Arial,sans-serif;background:#87ceeb;touch-action:none}
+canvas{display:block;position:fixed;inset:0;z-index:0}
+button{border:0;border-radius:12px;padding:12px;background:#18343b;color:white;font-weight:bold;cursor:pointer;touch-action:none}
+#hud{position:fixed;top:max(8px,env(safe-area-inset-top));left:8px;z-index:3;color:white;background:#10251ddd;padding:10px 13px;border-radius:12px;font-size:13px;line-height:1.8;pointer-events:none}
+#hud strong{font-size:16px}
+#msg{color:#aaf4ba}
+#topButtons{position:fixed;top:8px;right:8px;z-index:4;display:flex;gap:5px}
+#topButtons button{padding:9px;font-size:12px}
+#joystick{position:fixed;left:22px;bottom:25px;width:125px;height:125px;border-radius:50%;background:#10251d55;border:2px solid #ffffff88;z-index:4;touch-action:none}
+#stick{position:absolute;left:35px;top:35px;width:51px;height:51px;border-radius:50%;background:#ffffffcc;border:3px solid #356a63;pointer-events:none}
+#actions{position:fixed;right:15px;bottom:26px;z-index:4;display:flex;flex-direction:column;gap:9px;align-items:center}
+.action{width:66px;height:54px;border-radius:50%;font-size:21px;background:#17343be8;border:2px solid #ffffff88}
+#help{position:fixed;bottom:8px;left:50%;transform:translateX(-50%);color:white;background:#10251dbb;padding:6px 10px;border-radius:8px;font-size:11px;z-index:2;white-space:nowrap;pointer-events:none}
+#battle{display:none;position:fixed;inset:0;background:#06131cbb;z-index:8;align-items:center;justify-content:center;padding:12px}
+.card{width:min(390px,95vw);max-height:90dvh;overflow:auto;background:linear-gradient(145deg,#20464b,#12232f);color:white;padding:20px;border:2px solid #8de5c3;border-radius:20px;text-align:center;box-shadow:0 10px 50px #0008}
+#monster{font-size:70px;margin:3px}
+.bar{height:12px;background:#333;border-radius:20px;overflow:hidden;margin:8px 0}
+#enemyBar{height:100%;width:100%;background:#56df7b;transition:width .2s}
+#battleButtons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:15px}
+#battleButtons button{min-height:46px}
+#inventory{display:none;position:fixed;inset:0;background:#07151cdd;z-index:7;align-items:center;justify-content:center;padding:15px}
+#inventory .card{text-align:left}
+#collection{max-height:45vh;overflow:auto;line-height:2}
+#toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10;color:white;background:#142c31ed;padding:14px 20px;border-radius:12px;display:none;text-align:center}
+@media(orientation:landscape) and (max-height:500px){
+ #hud{font-size:11px;padding:6px 10px;line-height:1.5}
+ #hud strong{font-size:13px}
+ #joystick{width:100px;height:100px;bottom:12px;left:14px}
+ #stick{left:25px;top:25px;width:46px;height:46px}
+ #actions{bottom:12px;right:10px;gap:5px;flex-direction:row}
+ .action{width:52px;height:48px;font-size:18px}
+ .card{padding:12px;max-height:96dvh}
+ #monster{font-size:45px}
+ #help{display:none}
+}
 </style>
 </head>
 <body>
+
 <div id="hud">
-  <b>🌍 POCKET WORLD 3D</b><br>
-  Level: <span id="level">5</span><br>
+  <strong>🌍 POCKET WORLD 3D</strong><br>
+  Level: <span id="level">5</span> |
+  XP: <span id="xp">0</span><br>
   HP: <span id="hp">100</span>/100<br>
-  Captured: <span id="count">0</span>
-  <div id="msg">Explore the world!</div>
+  Captured: <span id="count">0</span><br>
+  <span id="msg">Explore the world!</span>
 </div>
-<div id="help">WASD / Arrow keys: Move<br>Walk in the grass to find creatures.</div>
-<div id="controls">
-  <span></span><button data-key="w">▲</button><span></span>
-  <button data-key="a">◀</button>
-  <button data-key="s">▼</button>
-  <button data-key="d">▶</button>
+
+<div id="topButtons">
+  <button id="fullscreen">⛶ Fullscreen</button>
+  <button id="bag">🎒 Pokémon</button>
+  <button id="save">💾 Save</button>
 </div>
+
+<div id="joystick"><div id="stick"></div></div>
+
+<div id="actions">
+  <button class="action" id="jump" aria-label="Jump">⬆</button>
+  <button class="action" id="interact" aria-label="Interact">🔍</button>
+</div>
+
+<div id="help">Joystick: Move · 🔍 Find creatures · 🎒 Collection</div>
+
 <div id="battle">
-  <div class="card">
-    <div id="monster" style="font-size:65px">🐲</div>
-    <h2 id="monsterName">Wild creature!</h2>
-    <p>Enemy HP: <span id="enemyHP">50</span></p>
-    <button onclick="attack()">⚔️ Attack</button>
-    <button onclick="capture()">🔵 Capture</button>
-    <button onclick="escapeBattle()">🏃 Run</button>
-    <p id="battleMsg"></p>
-  </div>
+ <div class="card">
+   <div id="monster">🔥</div>
+   <h2 id="monsterName">Wild creature</h2>
+   <div>Enemy HP: <span id="enemyHP">50</span>/<span id="enemyMax">50</span></div>
+   <div class="bar"><div id="enemyBar"></div></div>
+   <p id="battleMsg">A wild creature appeared!</p>
+   <div id="battleButtons">
+    <button id="attack">⚔️ Attack</button>
+    <button id="capture">🔵 Capture</button>
+    <button id="heal">💚 Heal (1)</button>
+    <button id="run">🏃 Run</button>
+   </div>
+ </div>
 </div>
+
+<div id="inventory">
+ <div class="card">
+  <h2>🎒 My Collection</h2>
+  <p>Captured creatures: <span id="bagCount">0</span></p>
+  <div id="collection">No creatures captured yet.</div>
+  <button id="closeBag">Close</button>
+ </div>
+</div>
+
+<div id="toast"></div>
 
 <script type="module">
 import * as THREE from
 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 
+/* ---------- GAME SETUP ---------- */
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb);
-scene.fog = new THREE.Fog(0x87ceeb, 35, 115);
+scene.fog = new THREE.Fog(0x87ceeb, 45, 180);
 
 const camera = new THREE.PerspectiveCamera(
-  70, innerWidth/innerHeight, 0.1, 300
+  65, innerWidth/innerHeight, 0.1, 500
 );
-
-const renderer = new THREE.WebGLRenderer({antialias:true});
+const renderer = new THREE.WebGLRenderer({
+  antialias: true, powerPreference: "high-performance"
+});
 renderer.setSize(innerWidth,innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
 
-scene.add(new THREE.HemisphereLight(0xffffff,0x537448,2));
+scene.add(new THREE.HemisphereLight(0xe6f6ff,0x527443,2));
 
-const sun = new THREE.DirectionalLight(0xffffff,2.5);
-sun.position.set(30,50,20);
+const sun = new THREE.DirectionalLight(0xffffff,2.3);
+sun.position.set(35,65,25);
 sun.castShadow = true;
+sun.shadow.mapSize.set(1024,1024);
 scene.add(sun);
 
+const mat = (color,roughness=1) =>
+ new THREE.MeshStandardMaterial({color,roughness});
+
 const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(240,240),
-  new THREE.MeshStandardMaterial({color:0x63b94c})
+ new THREE.PlaneGeometry(400,400),mat(0x65b94c)
 );
 ground.rotation.x=-Math.PI/2;
 ground.receiveShadow=true;
 scene.add(ground);
 
-// Grass patches
-for(let i=0;i<1800;i++){
-  const x=Math.random()*220-110;
-  const z=Math.random()*220-110;
-  const patch=new THREE.Mesh(
-    new THREE.BoxGeometry(.12,.35,.12),
-    new THREE.MeshStandardMaterial({
-      color:[0x398d38,0x4ca43c,0x81ca52][i%3]
-    })
-  );
-  patch.position.set(x,.17,z);
-  patch.rotation.z=(Math.random()-.5)*.3;
-  scene.add(patch);
+/* ---------- WORLD DETAILS ---------- */
+const random=(a,b)=>a+Math.random()*(b-a);
+
+for(let i=0;i<2400;i++){
+ const grass=new THREE.Mesh(
+  new THREE.BoxGeometry(.09,random(.12,.38),.09),
+  mat([0x398d38,0x4ca43c,0x81ca52][i%3])
+ );
+ grass.position.set(random(-190,190),.12,random(-190,190));
+ grass.rotation.z=random(-.2,.2);
+ scene.add(grass);
 }
 
-// Trees
 function makeTree(x,z){
-  const tree=new THREE.Group();
-  const trunk=new THREE.Mesh(
-    new THREE.CylinderGeometry(.25,.4,2,7),
-    new THREE.MeshStandardMaterial({color:0x79502b})
-  );
-  trunk.position.y=1;
-  trunk.castShadow=true;
-  tree.add(trunk);
+ const g=new THREE.Group();
+ const trunk=new THREE.Mesh(
+  new THREE.CylinderGeometry(.25,.4,2,7),mat(0x79502b)
+ );
+ trunk.position.y=1;
+ trunk.castShadow=true;
+ g.add(trunk);
 
-  const leaves=new THREE.Mesh(
-    new THREE.ConeGeometry(1.5,3.5,7),
-    new THREE.MeshStandardMaterial({color:0x237b39})
-  );
-  leaves.position.y=3.2;
-  leaves.castShadow=true;
-  tree.add(leaves);
-  tree.position.set(x,0,z);
-  scene.add(tree);
-}
-for(let i=0;i<100;i++){
-  let x=Math.random()*200-100;
-  let z=Math.random()*200-100;
-  if(Math.hypot(x,z)>9) makeTree(x,z);
+ const leaves=new THREE.Mesh(
+  new THREE.ConeGeometry(1.7,4,7),mat(0x237b39)
+ );
+ leaves.position.y=3.3;
+ leaves.castShadow=true;
+ g.add(leaves);
+ g.position.set(x,0,z);
+ scene.add(g);
 }
 
-// Mountains around the world
-for(let i=0;i<30;i++){
-  const a=i/30*Math.PI*2;
-  const mountain=new THREE.Mesh(
-    new THREE.ConeGeometry(5+Math.random()*6,12+Math.random()*12,5),
-    new THREE.MeshStandardMaterial({color:0x718778})
-  );
-  mountain.position.set(Math.cos(a)*108,7,Math.sin(a)*108);
-  scene.add(mountain);
+function makeBuilding(x,z){
+ const g=new THREE.Group();
+ const w=random(5,9),h=random(4,9),d=random(5,9);
+ const house=new THREE.Mesh(
+  new THREE.BoxGeometry(w,h,d),
+  mat([0xe8c69b,0xd7dce0,0xe8a9a0,0xc1d5a4][
+   Math.floor(Math.random()*4)])
+ );
+ house.position.y=h/2;
+ house.castShadow=true;
+ g.add(house);
+
+ const roof=new THREE.Mesh(
+  new THREE.ConeGeometry(w*.78,2.8,4),
+  mat(0x963f35)
+ );
+ roof.position.y=h+1;
+ roof.rotation.y=Math.PI/4;
+ g.add(roof);
+
+ // Door
+ const door=new THREE.Mesh(
+  new THREE.BoxGeometry(1.1,2,.12),mat(0x633d27)
+ );
+ door.position.set(0,1,d/2+.07);
+ g.add(door);
+
+ g.position.set(x,0,z);
+ scene.add(g);
 }
 
-// Player character
+for(let i=0;i<170;i++){
+ const x=random(-185,185),z=random(-185,185);
+ if(Math.hypot(x,z)>13 && Math.hypot(x,z)>25)
+  makeTree(x,z);
+}
+
+// A small town
+for(const [x,z] of [[18,-16],[30,-17],[18,-29],[31,-30],
+                     [-22,24],[-35,24],[-22,36]]){
+ makeBuilding(x,z);
+}
+
+for(let i=0;i<35;i++){
+ const a=i/35*Math.PI*2;
+ const m=new THREE.Mesh(
+  new THREE.ConeGeometry(random(6,11),random(15,27),5),
+  mat(0x718778)
+ );
+ m.position.set(Math.cos(a)*190,8,Math.sin(a)*190);
+ scene.add(m);
+}
+
+/* ---------- PLAYER ---------- */
 const player=new THREE.Group();
 
 const body=new THREE.Mesh(
-  new THREE.CapsuleGeometry(.45,.8,4,8),
-  new THREE.MeshStandardMaterial({color:0x2678ed})
+ new THREE.CapsuleGeometry(.42,.8,4,8),mat(0x2678ed)
 );
 body.position.y=1.05;
 body.castShadow=true;
 player.add(body);
 
 const head=new THREE.Mesh(
-  new THREE.SphereGeometry(.38,16,12),
-  new THREE.MeshStandardMaterial({color:0xffc99a})
+ new THREE.SphereGeometry(.37,16,12),mat(0xffc99a)
 );
 head.position.y=1.95;
-head.castShadow=true;
 player.add(head);
 
 const cap=new THREE.Mesh(
-  new THREE.SphereGeometry(.4,16,8,0,Math.PI*2,0,Math.PI/2),
-  new THREE.MeshStandardMaterial({color:0xe84242})
+ new THREE.SphereGeometry(.39,16,8,0,Math.PI*2,0,Math.PI/2),
+ mat(0xe84242)
 );
 cap.position.y=2.17;
 player.add(cap);
+
 player.position.set(0,0,0);
 scene.add(player);
 
-// Creature models
+/* ---------- CREATURE SPECIES ---------- */
 const species=[
-  {name:"Emberling",emoji:"🔥",color:0xff6038},
-  {name:"Mosslet",emoji:"🌿",color:0x42b85a},
-  {name:"Aquapho",emoji:"💧",color:0x3989ff},
-  {name:"Voltkit",emoji:"⚡",color:0xffd644},
-  {name:"Moonbat",emoji:"🌙",color:0x9b68dc}
+ {name:"Emberling",emoji:"🔥",color:0xff6038},
+ {name:"Mosslet",emoji:"🌿",color:0x42b85a},
+ {name:"Aquapho",emoji:"💧",color:0x3989ff},
+ {name:"Voltkit",emoji:"⚡",color:0xffd644},
+ {name:"Moonbat",emoji:"🌙",color:0x9b68dc},
+ {name:"Rockhorn",emoji:"🪨",color:0x99958c},
+ {name:"Frostpaw",emoji:"❄️",color:0x9be7ff},
+ {name:"Starwing",emoji:"✨",color:0xff9dc8},
+ {name:"Shadowfang",emoji:"🌑",color:0x5b4b82},
+ {name:"Leafling",emoji:"🍃",color:0x83c943},
+ {name:"Flarefox",emoji:"🦊",color:0xff8433},
+ {name:"Stormcub",emoji:"🌩️",color:0xb7baff}
 ];
 
 const wildCreatures=[];
-for(let i=0;i<18;i++){
-  const s=species[i%species.length];
-  const obj=new THREE.Group();
-  const ball=new THREE.Mesh(
-    new THREE.SphereGeometry(.65,16,12),
-    new THREE.MeshStandardMaterial({color:s.color})
+const worldLimit=175;
+
+function makeCreature(s,x,z){
+ const obj=new THREE.Group();
+
+ const ball=new THREE.Mesh(
+  new THREE.SphereGeometry(.65,16,12),mat(s.color)
+ );
+ ball.position.y=.7;
+ ball.castShadow=true;
+ obj.add(ball);
+
+ const belly=new THREE.Mesh(
+  new THREE.SphereGeometry(.38,12,10),mat(0xffffff)
+ );
+ belly.scale.set(1,.75,.5);
+ belly.position.set(0,.55,.42);
+ obj.add(belly);
+
+ const eyeMat=mat(0xffffff);
+ const pupilMat=mat(0x172027);
+ for(const side of [-1,1]){
+  const eye=new THREE.Mesh(
+   new THREE.SphereGeometry(.12,8,8),eyeMat
   );
-  ball.position.y=.7;
-  ball.castShadow=true;
-  obj.add(ball);
+  eye.position.set(side*.22,.9,.52);
+  obj.add(eye);
 
-  const eyeMat=new THREE.MeshStandardMaterial({color:0xffffff});
-  for(const side of [-1,1]){
-    const eye=new THREE.Mesh(
-      new THREE.SphereGeometry(.1,8,8),eyeMat
-    );
-    eye.position.set(side*.22,.85,.52);
-    obj.add(eye);
-  }
+  const pupil=new THREE.Mesh(
+   new THREE.SphereGeometry(.055,8,8),pupilMat
+  );
+  pupil.position.set(side*.22,.9,.62);
+  obj.add(pupil);
+ }
 
-  obj.position.set(Math.random()*70-35,0,Math.random()*70-35);
-  scene.add(obj);
-  wildCreatures.push({obj,species:s,active:true});
+ obj.position.set(x,0,z);
+ scene.add(obj);
+ const wild={
+  obj,species:s,active:true,
+  hp:40+Math.floor(Math.random()*45),
+  maxHP:0
+ };
+ wild.maxHP=wild.hp;
+ wildCreatures.push(wild);
+ return wild;
 }
 
+for(let i=0;i<45;i++){
+ const s=species[i%species.length];
+ let x,z;
+ do{
+  x=random(-100,100);
+  z=random(-100,100);
+ }while(Math.hypot(x,z)<10);
+ makeCreature(s,x,z);
+}
+
+/* ---------- SAVED GAME ---------- */
+let hp=100,level=5,xp=0,captured=0;
+let potions=3;
+let collection=[];
+let currentEnemy=null,enemyHP=0,enemyMax=0;
+let inBattle=false,lastEncounter=0;
+let jumpTime=0;
+
+function updateHUD(){
+ document.getElementById("hp").textContent=hp;
+ document.getElementById("level").textContent=level;
+ document.getElementById("xp").textContent=xp;
+ document.getElementById("count").textContent=captured;
+}
+
+function saveGame(show=true){
+ try{
+  const data={
+   hp,level,xp,captured,potions,collection,
+   player:{x:player.position.x,z:player.position.z},
+   defeated:wildCreatures.filter(w=>!w.active).map(w=>w.species.name)
+  };
+  localStorage.setItem("pocketWorld3D_save",JSON.stringify(data));
+  if(show)notify("💾 Game saved!");
+ }catch(e){
+  notify("Save failed. Check browser storage.");
+ }
+}
+
+function loadGame(){
+ try{
+  const raw=localStorage.getItem("pocketWorld3D_save");
+  if(!raw)return;
+  const d=JSON.parse(raw);
+  hp=THREE.MathUtils.clamp(Number(d.hp)||100,1,100);
+  level=Math.max(1,Number(d.level)||5);
+  xp=Math.max(0,Number(d.xp)||0);
+  captured=Math.max(0,Number(d.captured)||0);
+  potions=Math.max(0,Number(d.potions)||0);
+  collection=Array.isArray(d.collection)?d.collection:[];
+  if(d.player){
+   player.position.x=THREE.MathUtils.clamp(Number(d.player.x)||0,-175,175);
+   player.position.z=THREE.MathUtils.clamp(Number(d.player.z)||0,-175,175);
+  }
+  const defeated=Array.isArray(d.defeated)?d.defeated:[];
+  for(const w of wildCreatures){
+   if(defeated.includes(w.species.name)){
+    w.active=false;
+    scene.remove(w.obj);
+   }
+  }
+ }catch(e){console.warn("Could not load save",e)}
+}
+
+function notify(message){
+ const el=document.getElementById("toast");
+ el.textContent=message;
+ el.style.display="block";
+ clearTimeout(notify.timer);
+ notify.timer=setTimeout(()=>el.style.display="none",1800);
+}
+
+/* ---------- BATTLE SYSTEM ---------- */
+function startBattle(wild){
+ if(inBattle||!wild.active)return;
+ currentEnemy=wild;
+ enemyMax=wild.hp;
+ enemyHP=wild.hp;
+ inBattle=true;
+ document.getElementById("monster").textContent=wild.species.emoji;
+ document.getElementById("monsterName").textContent="Wild "+wild.species.name;
+ document.getElementById("battle").style.display="flex";
+ document.getElementById("battleMsg").textContent="A wild creature appeared!";
+ updateEnemyBar();
+ document.getElementById("msg").textContent="Battle started!";
+}
+
+function updateEnemyBar(){
+ document.getElementById("enemyHP").textContent=Math.max(0,enemyHP);
+ document.getElementById("enemyMax").textContent=enemyMax;
+ document.getElementById("enemyBar").style.width=
+  Math.max(0,enemyHP/enemyMax*100)+"%";
+}
+
+function closeBattle(message){
+ document.getElementById("battleMsg").textContent=message;
+ document.getElementById("msg").textContent=message;
+ inBattle=false;
+ currentEnemy=null;
+ setTimeout(()=>{
+  document.getElementById("battle").style.display="none";
+ },700);
+}
+
+function enemyTurn(){
+ if(!inBattle)return;
+ const damage=5+Math.floor(Math.random()*9);
+ hp=Math.max(0,hp-damage);
+ updateHUD();
+ if(hp<=0){
+  hp=100;
+  player.position.set(0,0,0);
+  updateHUD();
+  closeBattle("You recovered at the camp!");
+  saveGame(false);
+ }else{
+  document.getElementById("battleMsg").textContent=
+   "Enemy attacked! You lost "+damage+" HP.";
+ }
+}
+
+document.getElementById("attack").onclick=()=>{
+ if(!inBattle)return;
+ const damage=12+Math.floor(Math.random()*16)+level;
+ enemyHP=Math.max(0,enemyHP-damage);
+ updateEnemyBar();
+
+ if(enemyHP<=0){
+  const defeated=currentEnemy;
+  defeated.active=false;
+  scene.remove(defeated.obj);
+  xp+=25;
+  if(xp>=level*50){
+   xp=0;level++;hp=100;
+   document.getElementById("battleMsg").textContent=
+    "🏆 Victory! Level up! HP restored!";
+  }else{
+   document.getElementById("battleMsg").textContent=
+    "Victory! Gained 25 XP!";
+  }
+  updateHUD();
+  closeBattle(document.getElementById("battleMsg").textContent);
+  saveGame(false);
+ }else{
+  enemyTurn();
+ }
+};
+
+document.getElementById("capture").onclick=()=>{
+ if(!inBattle)return;
+ const chance=enemyHP<enemyMax*.3?.85:.45;
+ if(Math.random()<chance){
+  const name=currentEnemy.species.name;
+  collection.push({
+   name,emoji:currentEnemy.species.emoji,
+   level:Math.max(1,level+Math.floor(Math.random()*3)-1)
+  });
+  captured=collection.length;
+  currentEnemy.active=false;
+  scene.remove(currentEnemy.obj);
+  updateHUD();
+  closeBattle("🎉 Captured "+name+"!");
+  saveGame(false);
+ }else{
+  document.getElementById("battleMsg").textContent=
+   "Capture failed! The creature broke free!";
+  enemyTurn();
+ }
+};
+
+document.getElementById("heal").onclick=()=>{
+ if(!inBattle||potions<=0)return;
+ if(hp>=100){
+  document.getElementById("battleMsg").textContent="HP is already full!";
+  return;
+ }
+ potions--;
+ hp=Math.min(100,hp+35);
+ updateHUD();
+ document.getElementById("battleMsg").textContent=
+  "Potion used! HP restored. Potions left: "+potions;
+ enemyTurn();
+};
+
+document.getElementById("run").onclick=()=>{
+ if(inBattle)closeBattle("You escaped safely!");
+};
+
+/* ---------- COLLECTION ---------- */
+function openBag(){
+ const el=document.getElementById("collection");
+ document.getElementById("bagCount").textContent=collection.length;
+ if(!collection.length){
+  el.textContent="No creatures captured yet. Explore and catch some!";
+ }else{
+  el.innerHTML="";
+  collection.forEach((c,i)=>{
+   const row=document.createElement("div");
+   row.textContent=(i+1)+". "+c.emoji+" "+c.name+" — Lv. "+c.level;
+   el.appendChild(row);
+  });
+ }
+ document.getElementById("inventory").style.display="flex";
+}
+document.getElementById("bag").onclick=openBag;
+document.getElementById("closeBag").onclick=()=>{
+ document.getElementById("inventory").style.display="none";
+};
+document.getElementById("save").onclick=()=>saveGame(true);
+
+/* ---------- MOBILE JOYSTICK ---------- */
 const keys={};
-let hp=100,level=5,captured=0;
-let currentEnemy=null,enemyHP=50,inBattle=false;
-let lastEncounter=0;
+let joyX=0,joyY=0,joyPointer=null;
+const joystick=document.getElementById("joystick");
+const stick=document.getElementById("stick");
+
+function moveStick(e){
+ const r=joystick.getBoundingClientRect();
+ let x=e.clientX-(r.left+r.width/2);
+ let y=e.clientY-(r.top+r.height/2);
+ const max=r.width*.34;
+ const len=Math.hypot(x,y);
+ if(len>max){x=x/len*max;y=y/len*max}
+ joyX=x/max;
+ joyY=y/max;
+ stick.style.transform=`translate(${x}px,${y}px)`;
+}
+
+joystick.addEventListener("pointerdown",e=>{
+ e.preventDefault();
+ joyPointer=e.pointerId;
+ joystick.setPointerCapture(e.pointerId);
+ moveStick(e);
+});
+joystick.addEventListener("pointermove",e=>{
+ if(e.pointerId===joyPointer)moveStick(e);
+});
+function releaseJoy(e){
+ if(e.pointerId!==joyPointer)return;
+ joyPointer=null;
+ joyX=0;joyY=0;
+ stick.style.transform="translate(0,0)";
+}
+joystick.addEventListener("pointerup",releaseJoy);
+joystick.addEventListener("pointercancel",releaseJoy);
 
 addEventListener("keydown",e=>{
-  keys[e.key.toLowerCase()]=true;
-  if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key))
-    e.preventDefault();
+ keys[e.key.toLowerCase()]=true;
+ if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key))
+  e.preventDefault();
 });
 addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
 
-document.querySelectorAll("[data-key]").forEach(btn=>{
-  const key=btn.dataset.key;
-  btn.addEventListener("pointerdown",e=>{
-    e.preventDefault();keys[key]=true;
-  });
-  for(const event of ["pointerup","pointercancel","pointerleave"]){
-    btn.addEventListener(event,()=>keys[key]=false);
+document.getElementById("jump").addEventListener("pointerdown",e=>{
+ e.preventDefault();
+ if(!inBattle)jumpTime=.45;
+});
+document.getElementById("interact").onclick=()=>{
+ if(inBattle)return;
+ let nearest=null,dist=8;
+ for(const w of wildCreatures){
+  if(!w.active)continue;
+  const d=player.position.distanceTo(w.obj.position);
+  if(d<dist){dist=d;nearest=w;}
+ }
+ if(nearest)startBattle(nearest);
+ else notify("No creature nearby. Explore the grass!");
+};
+
+/* ---------- LANDSCAPE / FULLSCREEN ---------- */
+document.getElementById("fullscreen").onclick=async()=>{
+ try{
+  if(!document.fullscreenElement){
+   await document.documentElement.requestFullscreen();
+  }else{
+   await document.exitFullscreen();
   }
+ }catch(e){
+  notify("Use your browser menu for fullscreen.");
+ }
+ try{
+  if(screen.orientation?.lock)
+   await screen.orientation.lock("landscape");
+ }catch(e){
+  notify("Rotate your phone sideways for landscape.");
+ }
+};
+
+document.addEventListener("fullscreenchange",()=>{
+ document.getElementById("fullscreen").textContent=
+  document.fullscreenElement?"⛶ Exit":"⛶ Fullscreen";
+ onResize();
 });
 
-function updateHUD(){
-  document.getElementById("hp").textContent=hp;
-  document.getElementById("level").textContent=level;
-  document.getElementById("count").textContent=captured;
-}
-
-function startBattle(wild){
-  if(inBattle)return;
-  currentEnemy=wild;
-  enemyHP=50+level*4;
-  inBattle=true;
-  document.getElementById("monster").textContent=wild.species.emoji;
-  document.getElementById("monsterName").textContent=
-    "Wild "+wild.species.name;
-  document.getElementById("enemyHP").textContent=enemyHP;
-  document.getElementById("battleMsg").textContent="A wild creature appeared!";
-  document.getElementById("battle").style.display="flex";
-  document.getElementById("msg").textContent="Battle started!";
-}
-
-function finishBattle(text){
-  document.getElementById("battleMsg").textContent=text;
-  document.getElementById("msg").textContent=text;
-  setTimeout(()=>{
-    document.getElementById("battle").style.display="none";
-    inBattle=false;
-    currentEnemy=null;
-  },900);
-}
-
-window.attack=function(){
-  if(!inBattle)return;
-  enemyHP-=15+Math.floor(Math.random()*15);
-  document.getElementById("enemyHP").textContent=Math.max(0,enemyHP);
-  if(enemyHP<=0){
-    level++;
-    updateHUD();
-    finishBattle("Victory! Level up!");
-  }else{
-    hp=Math.max(0,hp-8);
-    updateHUD();
-    if(hp<=0){
-      hp=100;
-      updateHUD();
-      finishBattle("You recovered at the camp!");
-    }else{
-      document.getElementById("battleMsg").textContent=
-        "You attacked! The wild creature fought back.";
-    }
-  }
-};
-
-window.capture=function(){
-  if(!inBattle)return;
-  if(Math.random()<.55 || enemyHP<20){
-    captured++;
-    currentEnemy.active=false;
-    scene.remove(currentEnemy.obj);
-    updateHUD();
-    finishBattle("Captured "+currentEnemy.species.name+"!");
-  }else{
-    document.getElementById("battleMsg").textContent=
-      "It escaped the capture attempt! Try again.";
-    hp=Math.max(1,hp-5);
-    updateHUD();
-  }
-};
-
-window.escapeBattle=function(){
-  if(inBattle)finishBattle("You escaped safely!");
-};
-
+/* ---------- CAMERA & GAME LOOP ---------- */
 const clock=new THREE.Clock();
 const direction=new THREE.Vector3();
 const forward=new THREE.Vector3();
-const right=new THREE.Vector3();
+const desired=new THREE.Vector3();
+const target=new THREE.Vector3();
+const cameraOffset=new THREE.Vector3(0,5.5,8.5);
+let cameraYaw=0;
+
+function onResize(){
+ camera.aspect=innerWidth/innerHeight;
+ camera.updateProjectionMatrix();
+ renderer.setSize(innerWidth,innerHeight);
+}
+addEventListener("resize",onResize);
 
 function animate(){
-  requestAnimationFrame(animate);
-  const dt=Math.min(clock.getDelta(),.05);
+ requestAnimationFrame(animate);
+ const dt=Math.min(clock.getDelta(),.05);
+ const now=performance.now();
 
-  if(!inBattle){
-    direction.set(0,0,0);
-    if(keys.w||keys.arrowup)direction.z-=1;
-    if(keys.s||keys.arrowdown)direction.z+=1;
-    if(keys.a||keys.arrowleft)direction.x-=1;
-    if(keys.d||keys.arrowright)direction.x+=1;
+ if(!inBattle){
+  direction.set(0,0,0);
 
-    if(direction.lengthSq()>0){
-      direction.normalize();
-      player.position.addScaledVector(direction,8*dt);
-      player.rotation.y=Math.atan2(direction.x,direction.z);
-    }
+  if(keys.w||keys.arrowup)direction.z-=1;
+  if(keys.s||keys.arrowdown)direction.z+=1;
+  if(keys.a||keys.arrowleft)direction.x-=1;
+  if(keys.d||keys.arrowright)direction.x+=1;
 
-    player.position.x=THREE.MathUtils.clamp(player.position.x,-105,105);
-    player.position.z=THREE.MathUtils.clamp(player.position.z,-105,105);
+  direction.x+=joyX;
+  direction.z+=joyY;
 
-    for(const wild of wildCreatures){
-      if(!wild.active)continue;
-      wild.obj.position.y=.12+Math.sin(performance.now()*.003+
-        wild.obj.position.x)*.12;
-      wild.obj.rotation.y+=dt*.5;
-      if(player.position.distanceTo(wild.obj.position)<2.1 &&
-        performance.now()-lastEncounter>3500){
-        lastEncounter=performance.now();
-        startBattle(wild);
-        break;
-      }
-    }
+  if(direction.lengthSq()>1)direction.normalize();
+
+  if(direction.lengthSq()>.001){
+   player.position.x+=direction.x*9*dt;
+   player.position.z+=direction.z*9*dt;
+   player.rotation.y=Math.atan2(direction.x,direction.z);
   }
 
-  // Third-person follow camera
-  forward.set(0,0,-1).applyQuaternion(player.quaternion);
-  const target=player.position.clone().add(new THREE.Vector3(0,1,0));
-  const desired=player.position.clone()
-    .add(new THREE.Vector3(0,6,0))
-    .addScaledVector(forward,-9);
+  player.position.x=THREE.MathUtils.clamp(player.position.x,-180,180);
+  player.position.z=THREE.MathUtils.clamp(player.position.z,-180,180);
 
-  camera.position.lerp(desired,1-Math.exp(-5*dt));
-  camera.lookAt(target);
+  if(jumpTime>0){
+   jumpTime-=dt;
+   body.position.y=1.05+Math.sin((.45-jumpTime)/.45*Math.PI)*1.3;
+  }else body.position.y=1.05;
 
-  renderer.render(scene,camera);
-}
-animate();
+  for(const w of wildCreatures){
+   if(!w.active)continue;
+   w.obj.position.y=.12+Math.sin(now*.003+w.obj.position.x)*.12;
+   w.obj.rotation.y+=dt*.45;
+   if(player.position.distanceTo(w.obj.position)<1.8&&
+      now-lastEncounter>3000){
+    lastEncounter=now;
+    startBattle(w);
+    break;
+   }
+  }
+ }
 
-addEventListener("resize",()=>{
-  camera.aspect=innerWidth/innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth,innerHeight);
-});
-
-updateHUD();
-</script>
-</body>
-  </html>
-           
+ // Smooth third-person camera
+ forward.set(0,0,1).applyQuaternion(player.quaternion);
+ desire
