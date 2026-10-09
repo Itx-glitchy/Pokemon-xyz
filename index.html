@@ -1,0 +1,360 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pocket World 3D</title>
+<style>
+body{margin:0;overflow:hidden;font-family:Arial;background:#87ceeb}
+#hud{position:fixed;top:12px;left:12px;color:white;
+background:#10251dcc;padding:14px;border-radius:12px;z-index:2}
+#help{position:fixed;bottom:12px;left:12px;color:white;
+background:#10251dcc;padding:12px;border-radius:12px;z-index:2}
+#battle{display:none;position:fixed;inset:0;background:#0009;
+z-index:5;align-items:center;justify-content:center}
+.card{background:#172b31;color:white;padding:24px;border-radius:18px;
+width:min(340px,85vw);text-align:center}
+button{padding:12px;margin:5px;border:0;border-radius:10px;
+font-weight:bold;cursor:pointer}
+#controls{position:fixed;bottom:15px;right:12px;z-index:3;
+display:grid;grid-template-columns:48px 48px 48px;gap:5px}
+#controls button{background:#172b31cc;color:white;font-size:18px;
+touch-action:none;margin:0}
+</style>
+</head>
+<body>
+<div id="hud">
+  <b>🌍 POCKET WORLD 3D</b><br>
+  Level: <span id="level">5</span><br>
+  HP: <span id="hp">100</span>/100<br>
+  Captured: <span id="count">0</span>
+  <div id="msg">Explore the world!</div>
+</div>
+<div id="help">WASD / Arrow keys: Move<br>Walk in the grass to find creatures.</div>
+<div id="controls">
+  <span></span><button data-key="w">▲</button><span></span>
+  <button data-key="a">◀</button>
+  <button data-key="s">▼</button>
+  <button data-key="d">▶</button>
+</div>
+<div id="battle">
+  <div class="card">
+    <div id="monster" style="font-size:65px">🐲</div>
+    <h2 id="monsterName">Wild creature!</h2>
+    <p>Enemy HP: <span id="enemyHP">50</span></p>
+    <button onclick="attack()">⚔️ Attack</button>
+    <button onclick="capture()">🔵 Capture</button>
+    <button onclick="escapeBattle()">🏃 Run</button>
+    <p id="battleMsg"></p>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from
+'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
+scene.fog = new THREE.Fog(0x87ceeb, 35, 115);
+
+const camera = new THREE.PerspectiveCamera(
+  70, innerWidth/innerHeight, 0.1, 300
+);
+
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0xffffff,0x537448,2));
+
+const sun = new THREE.DirectionalLight(0xffffff,2.5);
+sun.position.set(30,50,20);
+sun.castShadow = true;
+scene.add(sun);
+
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(240,240),
+  new THREE.MeshStandardMaterial({color:0x63b94c})
+);
+ground.rotation.x=-Math.PI/2;
+ground.receiveShadow=true;
+scene.add(ground);
+
+// Grass patches
+for(let i=0;i<1800;i++){
+  const x=Math.random()*220-110;
+  const z=Math.random()*220-110;
+  const patch=new THREE.Mesh(
+    new THREE.BoxGeometry(.12,.35,.12),
+    new THREE.MeshStandardMaterial({
+      color:[0x398d38,0x4ca43c,0x81ca52][i%3]
+    })
+  );
+  patch.position.set(x,.17,z);
+  patch.rotation.z=(Math.random()-.5)*.3;
+  scene.add(patch);
+}
+
+// Trees
+function makeTree(x,z){
+  const tree=new THREE.Group();
+  const trunk=new THREE.Mesh(
+    new THREE.CylinderGeometry(.25,.4,2,7),
+    new THREE.MeshStandardMaterial({color:0x79502b})
+  );
+  trunk.position.y=1;
+  trunk.castShadow=true;
+  tree.add(trunk);
+
+  const leaves=new THREE.Mesh(
+    new THREE.ConeGeometry(1.5,3.5,7),
+    new THREE.MeshStandardMaterial({color:0x237b39})
+  );
+  leaves.position.y=3.2;
+  leaves.castShadow=true;
+  tree.add(leaves);
+  tree.position.set(x,0,z);
+  scene.add(tree);
+}
+for(let i=0;i<100;i++){
+  let x=Math.random()*200-100;
+  let z=Math.random()*200-100;
+  if(Math.hypot(x,z)>9) makeTree(x,z);
+}
+
+// Mountains around the world
+for(let i=0;i<30;i++){
+  const a=i/30*Math.PI*2;
+  const mountain=new THREE.Mesh(
+    new THREE.ConeGeometry(5+Math.random()*6,12+Math.random()*12,5),
+    new THREE.MeshStandardMaterial({color:0x718778})
+  );
+  mountain.position.set(Math.cos(a)*108,7,Math.sin(a)*108);
+  scene.add(mountain);
+}
+
+// Player character
+const player=new THREE.Group();
+
+const body=new THREE.Mesh(
+  new THREE.CapsuleGeometry(.45,.8,4,8),
+  new THREE.MeshStandardMaterial({color:0x2678ed})
+);
+body.position.y=1.05;
+body.castShadow=true;
+player.add(body);
+
+const head=new THREE.Mesh(
+  new THREE.SphereGeometry(.38,16,12),
+  new THREE.MeshStandardMaterial({color:0xffc99a})
+);
+head.position.y=1.95;
+head.castShadow=true;
+player.add(head);
+
+const cap=new THREE.Mesh(
+  new THREE.SphereGeometry(.4,16,8,0,Math.PI*2,0,Math.PI/2),
+  new THREE.MeshStandardMaterial({color:0xe84242})
+);
+cap.position.y=2.17;
+player.add(cap);
+player.position.set(0,0,0);
+scene.add(player);
+
+// Creature models
+const species=[
+  {name:"Emberling",emoji:"🔥",color:0xff6038},
+  {name:"Mosslet",emoji:"🌿",color:0x42b85a},
+  {name:"Aquapho",emoji:"💧",color:0x3989ff},
+  {name:"Voltkit",emoji:"⚡",color:0xffd644},
+  {name:"Moonbat",emoji:"🌙",color:0x9b68dc}
+];
+
+const wildCreatures=[];
+for(let i=0;i<18;i++){
+  const s=species[i%species.length];
+  const obj=new THREE.Group();
+  const ball=new THREE.Mesh(
+    new THREE.SphereGeometry(.65,16,12),
+    new THREE.MeshStandardMaterial({color:s.color})
+  );
+  ball.position.y=.7;
+  ball.castShadow=true;
+  obj.add(ball);
+
+  const eyeMat=new THREE.MeshStandardMaterial({color:0xffffff});
+  for(const side of [-1,1]){
+    const eye=new THREE.Mesh(
+      new THREE.SphereGeometry(.1,8,8),eyeMat
+    );
+    eye.position.set(side*.22,.85,.52);
+    obj.add(eye);
+  }
+
+  obj.position.set(Math.random()*70-35,0,Math.random()*70-35);
+  scene.add(obj);
+  wildCreatures.push({obj,species:s,active:true});
+}
+
+const keys={};
+let hp=100,level=5,captured=0;
+let currentEnemy=null,enemyHP=50,inBattle=false;
+let lastEncounter=0;
+
+addEventListener("keydown",e=>{
+  keys[e.key.toLowerCase()]=true;
+  if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key))
+    e.preventDefault();
+});
+addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
+
+document.querySelectorAll("[data-key]").forEach(btn=>{
+  const key=btn.dataset.key;
+  btn.addEventListener("pointerdown",e=>{
+    e.preventDefault();keys[key]=true;
+  });
+  for(const event of ["pointerup","pointercancel","pointerleave"]){
+    btn.addEventListener(event,()=>keys[key]=false);
+  }
+});
+
+function updateHUD(){
+  document.getElementById("hp").textContent=hp;
+  document.getElementById("level").textContent=level;
+  document.getElementById("count").textContent=captured;
+}
+
+function startBattle(wild){
+  if(inBattle)return;
+  currentEnemy=wild;
+  enemyHP=50+level*4;
+  inBattle=true;
+  document.getElementById("monster").textContent=wild.species.emoji;
+  document.getElementById("monsterName").textContent=
+    "Wild "+wild.species.name;
+  document.getElementById("enemyHP").textContent=enemyHP;
+  document.getElementById("battleMsg").textContent="A wild creature appeared!";
+  document.getElementById("battle").style.display="flex";
+  document.getElementById("msg").textContent="Battle started!";
+}
+
+function finishBattle(text){
+  document.getElementById("battleMsg").textContent=text;
+  document.getElementById("msg").textContent=text;
+  setTimeout(()=>{
+    document.getElementById("battle").style.display="none";
+    inBattle=false;
+    currentEnemy=null;
+  },900);
+}
+
+window.attack=function(){
+  if(!inBattle)return;
+  enemyHP-=15+Math.floor(Math.random()*15);
+  document.getElementById("enemyHP").textContent=Math.max(0,enemyHP);
+  if(enemyHP<=0){
+    level++;
+    updateHUD();
+    finishBattle("Victory! Level up!");
+  }else{
+    hp=Math.max(0,hp-8);
+    updateHUD();
+    if(hp<=0){
+      hp=100;
+      updateHUD();
+      finishBattle("You recovered at the camp!");
+    }else{
+      document.getElementById("battleMsg").textContent=
+        "You attacked! The wild creature fought back.";
+    }
+  }
+};
+
+window.capture=function(){
+  if(!inBattle)return;
+  if(Math.random()<.55 || enemyHP<20){
+    captured++;
+    currentEnemy.active=false;
+    scene.remove(currentEnemy.obj);
+    updateHUD();
+    finishBattle("Captured "+currentEnemy.species.name+"!");
+  }else{
+    document.getElementById("battleMsg").textContent=
+      "It escaped the capture attempt! Try again.";
+    hp=Math.max(1,hp-5);
+    updateHUD();
+  }
+};
+
+window.escapeBattle=function(){
+  if(inBattle)finishBattle("You escaped safely!");
+};
+
+const clock=new THREE.Clock();
+const direction=new THREE.Vector3();
+const forward=new THREE.Vector3();
+const right=new THREE.Vector3();
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),.05);
+
+  if(!inBattle){
+    direction.set(0,0,0);
+    if(keys.w||keys.arrowup)direction.z-=1;
+    if(keys.s||keys.arrowdown)direction.z+=1;
+    if(keys.a||keys.arrowleft)direction.x-=1;
+    if(keys.d||keys.arrowright)direction.x+=1;
+
+    if(direction.lengthSq()>0){
+      direction.normalize();
+      player.position.addScaledVector(direction,8*dt);
+      player.rotation.y=Math.atan2(direction.x,direction.z);
+    }
+
+    player.position.x=THREE.MathUtils.clamp(player.position.x,-105,105);
+    player.position.z=THREE.MathUtils.clamp(player.position.z,-105,105);
+
+    for(const wild of wildCreatures){
+      if(!wild.active)continue;
+      wild.obj.position.y=.12+Math.sin(performance.now()*.003+
+        wild.obj.position.x)*.12;
+      wild.obj.rotation.y+=dt*.5;
+      if(player.position.distanceTo(wild.obj.position)<2.1 &&
+        performance.now()-lastEncounter>3500){
+        lastEncounter=performance.now();
+        startBattle(wild);
+        break;
+      }
+    }
+  }
+
+  // Third-person follow camera
+  forward.set(0,0,-1).applyQuaternion(player.quaternion);
+  const target=player.position.clone().add(new THREE.Vector3(0,1,0));
+  const desired=player.position.clone()
+    .add(new THREE.Vector3(0,6,0))
+    .addScaledVector(forward,-9);
+
+  camera.position.lerp(desired,1-Math.exp(-5*dt));
+  camera.lookAt(target);
+
+  renderer.render(scene,camera);
+}
+animate();
+
+addEventListener("resize",()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+updateHUD();
+</script>
+</body>
+  </html>
+           
